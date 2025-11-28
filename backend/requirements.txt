@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-multipart
+transformers
+sentence-transformers
+ffmpeg-python
+faiss-cpu
+whisper @ git+https://github.com/openai/whisper.git
