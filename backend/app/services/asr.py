@@ -33,7 +33,7 @@ def get_model():
     """
     device = get_device()
     print(f"[ASR] Loading Whisper Small on device: {device}")
-    model = whisper.load_model("small", device=device)
+    model = whisper.load_model("small", device="cpu")
     return model
 
 
