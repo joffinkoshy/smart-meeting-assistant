@@ -1,109 +1,200 @@
-import React from 'react'
+import React, { useState, useRef } from "react";
 
-function UploadForm(){
-  const [file, setFile] = React.useState(null)
-  const [transcript, setTranscript] = React.useState(null)
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState(null)
+export default function App() {
+  const [file, setFile] = useState(null);
+  const [transcript, setTranscript] = useState("");
+  const [segments, setSegments] = useState([]);
+  const [intelligence, setIntelligence] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const inputRef = useRef(null);
 
-  const upload = async () =>{
-    if(!file) {
-      setError('Please select a file first')
-      return
+  const handleFileChange = (e) => {
+    setFile(e.target.files?.[0] ?? null);
+    setError(null);
+    setTranscript("");
+    setSegments([]);
+    setIntelligence(null);
+  };
+
+  const reset = () => {
+    setFile(null);
+    setTranscript("");
+    setSegments([]);
+    setIntelligence(null);
+    setError(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const uploadAndTranscribe = async () => {
+    if (!file) {
+      setError("Please choose a .wav file to upload.");
+      return;
     }
-    
-    setLoading(true)
-    setError(null)
-    setTranscript(null)
-    
+
+    setLoading(true);
+    setError(null);
+    setTranscript("");
+    setSegments([]);
+    setIntelligence(null);
+
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      
-      const res = await fetch('http://localhost:8000/api/transcribe_and_analyze', {
-        method: 'POST', 
-        body: fd
-      })
-      
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.detail || `HTTP error! status: ${res.status}`)
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const resp = await fetch("/api/transcribe_and_analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`Server error: ${resp.status} ${text}`);
       }
-      
-      const json = await res.json()
-      
-      if (json.error) {
-        throw new Error(json.error)
-      }
-      
-      setTranscript(json)
+
+      const data = await resp.json();
+
+      // Expected shape: { text, segments, intelligence }
+      setTranscript(data.text ?? "");
+      setSegments(Array.isArray(data.segments) ? data.segments : []);
+      setIntelligence(data.intelligence ?? null);
     } catch (err) {
-      setError(err.message || 'Failed to transcribe audio')
-      console.error('Upload error:', err)
+      console.error(err);
+      setError(err.message || "Unknown error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const downloadTranscript = () => {
+    const blob = new Blob([transcript || ""], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download =
+      file ? `${file.name.replace(/\.[^/.]+$/, "")}_transcript.txt` : "transcript.txt";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div style={{padding:20, maxWidth: 800, margin: '0 auto'}}>
-      <h1>Smart Meeting Assistant (MVP)</h1>
-      
-      <div style={{marginTop: 20}}>
-        <input 
-          type="file" 
-          accept="audio/*,video/*" 
-          onChange={(e)=>{
-            setFile(e.target.files[0])
-            setError(null)
-          }} 
-          disabled={loading}
-        />
-        <button 
-          onClick={upload} 
-          disabled={loading || !file}
-          style={{
-            marginLeft: 10,
-            padding: '8px 16px',
-            cursor: loading || !file ? 'not-allowed' : 'pointer',
-            opacity: loading || !file ? 0.6 : 1
-          }}
-        >
-          {loading ? 'Processing...' : 'Upload & Transcribe'}
-        </button>
-      </div>
-      
-      {loading && (
-        <div style={{marginTop:20, color: '#0066cc'}}>
-          <p>⏳ Transcribing audio... This may take a few minutes.</p>
-        </div>
-      )}
-      
-      {error && (
-        <div style={{marginTop:20, padding: 15, backgroundColor: '#fee', border: '1px solid #fcc', borderRadius: 4}}>
-          <h3 style={{color: '#c00', margin: '0 0 10px 0'}}>Error</h3>
-          <p style={{margin: 0}}>{error}</p>
-        </div>
-      )}
-      
-      {transcript && (
-        <div style={{marginTop:20, padding: 15, backgroundColor: '#efe', border: '1px solid #cfc', borderRadius: 4}}>
-          <h3 style={{margin: '0 0 10px 0'}}>Transcript</h3>
-          <pre style={{
-            whiteSpace: 'pre-wrap',
-            wordWrap: 'break-word',
-            backgroundColor: 'white',
-            padding: 10,
-            borderRadius: 4,
-            maxHeight: 400,
-            overflow: 'auto'
-          }}>
-            {transcript.transcript || JSON.stringify(transcript, null, 2)}
-          </pre>
-        </div>
-      )}
-    </div>
-  )
-}
+    <div className="min-h-screen bg-gray-50 p-6 font-sans">
+      <div className="max-w-3xl mx-auto bg-white shadow-md rounded-lg p-6">
+        <h1 className="text-2xl font-bold mb-4">Smart Meeting Assistant (MVP)</h1>
 
-export default function App(){ return <UploadForm /> }
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Choose audio (.wav)
+          </label>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="audio/wav, audio/x-wav, audio/mpeg, audio/*"
+            onChange={handleFileChange}
+            className="block w-full"
+          />
+        </div>
+
+        <div className="flex gap-2 mb-6">
+          <button
+            className={`px-4 py-2 rounded ${
+              loading ? "bg-gray-300 cursor-not-allowed" : "bg-blue-600 text-white"
+            }`}
+            onClick={uploadAndTranscribe}
+            disabled={loading}
+          >
+            {loading ? "Transcribing..." : "Upload & Transcribe"}
+          </button>
+
+          <button
+            className="px-4 py-2 rounded bg-gray-200"
+            onClick={reset}
+            disabled={loading}
+          >
+            Reset
+          </button>
+
+          <button
+            className="px-4 py-2 rounded bg-green-600 text-white"
+            onClick={downloadTranscript}
+            disabled={!transcript}
+          >
+            Download Transcript
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+            Error: {error}
+          </div>
+        )}
+
+        {transcript && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-2">Transcript</h2>
+            <pre className="bg-gray-100 p-3 rounded whitespace-pre-wrap">
+              {transcript}
+            </pre>
+          </div>
+        )}
+
+        {segments && segments.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-medium mb-2">Segments</h3>
+            <ul className="list-disc pl-5">
+              {segments.map((s, i) => (
+                <li key={i} className="mb-1">
+                  <strong>
+                    [{(s.start ?? 0).toFixed(2)} - {(s.end ?? 0).toFixed(2)}]
+                  </strong>{" "}
+                  {s.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {intelligence && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-3">Meeting Intelligence</h2>
+
+            <div className="mb-4">
+              <h4 className="font-medium">Summary</h4>
+              <p className="mt-1 text-gray-700">
+                {intelligence.summary ?? intelligence.raw ?? "(no summary)"}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <h4 className="font-medium">Key Points</h4>
+              <ul className="list-disc pl-5 mt-1">
+                {(intelligence.key_points || []).map((kp, idx) => (
+                  <li key={idx}>{kp}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-medium">Action Items</h4>
+              <ul className="list-disc pl-5 mt-1">
+                {(intelligence.action_items || []).map((ai, idx) => (
+                  <li key={idx}>
+                    <strong>{ai.task ?? "(no task)"}</strong>
+                    {ai.owner ? ` — ${ai.owner}` : " — unassigned"}
+                    {ai.due ? ` (due: ${ai.due})` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        <footer className="text-sm text-gray-500 mt-6">
+          Powered by Whisper & LLM Summarization
+        </footer>
+      </div>
+    </div>
+  );
+}

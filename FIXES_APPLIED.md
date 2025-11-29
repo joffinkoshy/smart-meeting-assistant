@@ -131,13 +131,14 @@ Expected: Both services start successfully
    - Impact: Low - doesn't affect functionality
 
 2. **Unused Services**
-   - Files: `embeddings.py`, `summarize.py`
-   - Recommendation: Either integrate or remove
-   - Impact: Low - just adds unnecessary dependencies
+   - Files: `embeddings.py` (removed), `summarize.py` (integrated)
+   - Status: `embeddings.py` removed as unused, `summarize.py` is actively used
+   - Impact: Low - removed unnecessary dependencies
 
 3. **No Test Suite**
-   - Recommendation: Add pytest for backend, Jest for frontend
-   - Impact: Low - functionality works, but tests would help prevent regressions
+   - Status: Added basic test suites for both backend (pytest) and frontend (Jest)
+   - Files Added: `backend/tests/conftest.py`, `backend/tests/test_asr_router.py`, `frontend/src/App.test.js`
+   - Impact: Low - basic tests added to prevent regressions
 
 ## Current Status
 

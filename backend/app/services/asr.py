@@ -2,8 +2,12 @@
 
 import whisper
 import torch
+import logging
 from functools import lru_cache
 from typing import Dict, Any
+from ..services.summarize import analyze_transcript
+
+logger = logging.getLogger(__name__)
 
 # -----------------------------
 # DEVICE SELECTION (CPU / MPS)
@@ -31,38 +35,42 @@ def get_model():
     Loads Whisper Small model once.
     Cached using lru_cache so it stays in memory.
     """
-    device = get_device()
-    print(f"[ASR] Loading Whisper Small on device: {device}")
-    model = whisper.load_model("small", device="cpu")
+    device = "cpu"  # Force CPU due to MPS compatibility issues
+    logger.info(f"Loading Whisper Small on device: {device}")
+    model = whisper.load_model("small", device=device)
     return model
 
 
 # -----------------------------
 # TRANSCRIPTION FUNCTION
 # -----------------------------
+
 def transcribe_file(path: str) -> Dict[str, Any]:
-    """
-    Transcribes an audio file using Whisper Small.
-    Returns:
-    {
-        "text": "...",
-        "segments": [...]
-    }
-    """
     model = get_model()
-    print(f"[ASR] Transcribing file: {path}")
+    logger.info(f"Transcribing file: {path}")
 
     try:
         result = model.transcribe(path, verbose=False)
     except Exception as e:
-        print(f"[ASR] Error transcribing: {e}")
+        logger.error(f"Error transcribing: {e}")
         return {
             "text": "",
             "segments": [],
+            "intelligence": None,
             "error": str(e)
         }
 
+    transcript_text = result.get("text", "")
+
+    # Call the summarizer (LLM) - consider async later for speed.
+    try:
+        intelligence = analyze_transcript(transcript_text)
+    except Exception as e:
+        logger.error(f"Error during summarization: {e}")
+        intelligence = {"error": str(e)}
+
     return {
-        "text": result.get("text", ""),
+        "text": transcript_text,
         "segments": result.get("segments", []),
+        "intelligence": intelligence,
     }

@@ -96,15 +96,16 @@ smart-meeting-assistant/
 │   │   │   └── asr_router.py    # Transcription API endpoints
 │   │   └── services/
 │   │       ├── asr.py           # Whisper transcription service
-│   │       ├── embeddings.py    # Embeddings service (unused)
 │   │       ├── storage.py       # File storage utilities
-│   │       └── summarize.py     # Summarization service (unused)
+│   │       └── summarize.py     # LLM summarization service
+│   ├── tests/                   # Backend tests
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── .env.example            # Environment configuration template
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx             # Main React component
+│   │   ├── App.test.js         # Frontend tests
 │   │   ├── index.jsx           # React entry point
 │   │   └── index.css           # Styles
 │   ├── public/
@@ -127,10 +128,25 @@ Transcribes an audio/video file.
 **Response:**
 ```json
 {
-  "file_id": "abc123...",
-  "transcript": "The transcribed text...",
-  "segments": [...],
-  "error": null
+  "text": "The transcribed text...",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 5.0,
+      "text": "Hello world"
+    }
+  ],
+  "intelligence": {
+    "summary": "Brief summary",
+    "key_points": ["Point 1", "Point 2"],
+    "action_items": [
+      {
+        "task": "Follow up",
+        "owner": "John",
+        "due": "2025-01-01"
+      }
+    ]
+  }
 }
 ```
 
@@ -243,11 +259,11 @@ npm install
 
 ### Running Tests
 ```bash
-# Backend tests (when implemented)
+# Backend tests
 cd backend
 pytest
 
-# Frontend tests (when implemented)
+# Frontend tests
 cd frontend
 npm test
 ```
