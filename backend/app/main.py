@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import router as api_router
+from app.routers.asr_router import router as asr_router
 
 app = FastAPI(title="Smart Meeting Assistant - Backend")
 
@@ -12,7 +12,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix="/api")
+app.include_router(asr_router, prefix="/api")
 
 @app.get("/")
 async def root():
